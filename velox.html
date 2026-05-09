@@ -848,6 +848,7 @@ const LiveShare={
     await new Promise((resolve,reject)=>{
       const script=document.createElement('script');
       // Use CDN-hosted Socket.IO client because GitHub Pages cannot serve the socket.io endpoint.
+      // This commit also forces a fresh Pages rebuild for the latest live deploy.
       script.src='https://cdn.socket.io/4.7.5/socket.io.min.js';
       script.onload=resolve;
       script.onerror=()=>reject(new Error('Socket.IO client failed to load from CDN')); 
