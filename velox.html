@@ -193,6 +193,14 @@ label{display:grid;gap:5px;color:var(--muted);font-size:12px;text-transform:uppe
           </label>
           <button id="uploadCourseBtn" class="primary">Upload Course</button>
         </div>
+        <div class="presetLine">
+          <label>Preset Routes
+            <select id="presetRoutes">
+              <option value="">Select a preset route</option>
+              <option value="cgv">CGV Route</option>
+            </select>
+          </label>
+        </div>
         <div class="row" style="margin-top:10px">
           <button id="clearLoopBtn">Clear</button>
           <label class="tog"><input id="gradeToErg" type="checkbox"> Grade controls trainer</label>
@@ -623,6 +631,20 @@ async function uploadCourse(){
     setBusy('uploadCourseBtn',false,'Upload Course');
   }
 }
+async function loadPresetRoute(){
+  const val = $('presetRoutes').value;
+  if(!val) return;
+  status('Loading preset route...');
+  try{
+    const response = await fetch('/'+val+'.gpx');
+    if(!response.ok) throw new Error('HTTP '+response.status);
+    const text = await response.text();
+    parseGpx(text, val.toUpperCase() + ' Route');
+    status('Loaded preset route: '+val);
+  }catch(e){
+    status('Failed to load preset: '+e.message);
+  }
+}
 function positionAt(dist){
   if(!S.routeLen||!S.route.length)return{lat:0,lon:0,ele:0,grade:0};
   const d=dist%S.routeLen; let i=1; while(i<S.route.length&&S.route[i].dist<d)i++;
@@ -1046,7 +1068,7 @@ function updateLivePeerMarkers(){
 Store.subscribe(()=>LiveShare.share(false));
 $('trainerBtn').onclick=connectTrainer;$('hrmBtn').onclick=connectHrm;$('demoBtn').onclick=()=>S.demo?stopDemo():startDemo();$('recBtn').onclick=()=>S.recording?stopRide():startRide();
 $('gpxBtn').onclick=()=>download(buildGPX(S.records),'gpx','application/gpx+xml');$('fitBtn').onclick=()=>download(buildFIT(S.records),'fit','application/octet-stream');
-$('uploadCourseBtn').onclick=uploadCourse;$('courseFile').onchange=uploadCourse;$('clearLoopBtn').onclick=clearCourse;$('gradeToErg').onchange=e=>S.gradeErg=e.target.checked;
+$('uploadCourseBtn').onclick=uploadCourse;$('courseFile').onchange=uploadCourse;$('presetRoutes').onchange=loadPresetRoute;$('clearLoopBtn').onclick=clearCourse;$('gradeToErg').onchange=e=>S.gradeErg=e.target.checked;
 $('stravaSegmentsBtn').onclick=loadStravaStarredSegments;
 $('ftp').onchange=e=>setState({ftp:Number(e.target.value)||250});$('lthr').onchange=e=>setState({lthr:Number(e.target.value)||165});
 $('riderWeight').onchange=e=>{S.physics.riderWeightKg=clamp(Number(e.target.value)||72,35,160);e.target.value=S.physics.riderWeightKg;status('Rider weight set to '+S.physics.riderWeightKg+' kg')};
