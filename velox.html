@@ -102,6 +102,16 @@ label{display:grid;gap:5px;color:var(--muted);font-size:12px;text-transform:uppe
 .livePeer b{font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .livePeer span{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
 .liveMarker{display:grid;place-items:center;width:24px;height:24px;border:2px solid #071019;border-radius:50%;color:#061018;font-size:11px;font-weight:900;box-shadow:0 0 0 2px rgba(255,255,255,.18),0 8px 18px rgba(0,0,0,.35)}
+.overlay{position:fixed;inset:0;background:rgba(7,9,15,.92);display:grid;place-items:center;z-index:22;padding:20px}
+.overlayPanel{background:var(--panel);border:1px solid var(--line);border-radius:12px;max-width:780px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.35)}
+.overlayHeader{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)}
+.overlayHeader h3{margin:0;font-size:16px}
+.overlayHeader button{background:transparent;border:none;color:var(--text);font-size:26px;line-height:1;cursor:pointer}
+.summaryGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:20px}
+.summaryBox{background:#0b1118;border:1px solid #1e2d3d;border-radius:10px;padding:14px}
+.summaryBox b{display:block;font-size:20px;margin-bottom:6px}
+.summaryBox span{color:var(--muted);font-size:12px}
+.summaryChart{height:220px;width:100%;background:#0b1118;border:1px solid #1d2b39;border-radius:7px;margin-top:12px}
 </style>
 
   <!-- MapillaryJS (street-level imagery) -->
@@ -148,6 +158,7 @@ label{display:grid;gap:5px;color:var(--muted);font-size:12px;text-transform:uppe
           <div class="metric"><b id="avgPower">0</b><span>average watts</span></div>
           <div class="metric"><b id="calories">0</b><span>kcal</span></div>
           <canvas class="chart wide" id="chart"></canvas>
+          <canvas class="chart wide" id="pdcChart" title="Power duration curve"></canvas>
         </div>
       </div>
     </div>
@@ -201,6 +212,14 @@ label{display:grid;gap:5px;color:var(--muted);font-size:12px;text-transform:uppe
             </select>
           </label>
         </div>
+        <div class="presetLine">
+          <label>Map tiles
+            <select id="tileSelector">
+              <option value="osm">Standard OSM</option>
+              <option value="satellite">Satellite</option>
+            </select>
+          </label>
+        </div>
         <div class="row" style="margin-top:10px">
           <button id="clearLoopBtn">Clear</button>
           <label class="tog"><input id="gradeToErg" type="checkbox"> Grade controls trainer</label>
@@ -211,6 +230,7 @@ label{display:grid;gap:5px;color:var(--muted);font-size:12px;text-transform:uppe
           <div class="pill"><b id="gradeNow">0.0%</b><span>grade</span></div>
           <div class="pill"><b id="laps">0</b><span>laps</span></div>
         </div>
+        <canvas class="chart wide" id="elevationChart" title="Elevation profile"></canvas>
         <div class="routeStats">
           <div class="pill"><b id="segmentTime">--:--</b><span>segment time</span></div>
           <div class="pill" style="grid-column:span 3"><b id="segmentName">No segment</b><span>active starred segment</span></div>
@@ -245,6 +265,8 @@ label{display:grid;gap:5px;color:var(--muted);font-size:12px;text-transform:uppe
         </div>
         <div class="row" style="margin-top:10px">
           <button id="ergToggle">ERG Off</button>
+          <button id="summaryBtn" type="button">Ride Summary</button>
+          <button id="ftpRampBtn" type="button">FTP Ramp Test</button>
         </div>
         <div class="form" style="margin-top:10px">
           <label>Live server
@@ -281,6 +303,7 @@ label{display:grid;gap:5px;color:var(--muted);font-size:12px;text-transform:uppe
   </section>
 </main>
 
+<script type="module" src="velox-modules.js"></script>
 <script>
 const S={
   trainer:null,hrm:null,server:null,hrServer:null,bikeChar:null,ctrlChar:null,
@@ -290,6 +313,7 @@ const S={
   physics:{riderWeightKg:72,bikeWeightKg:10,rho:1.225,g:9.81,crr:0.0045,cda:0.32,drivetrainEfficiency:0.97,tau:2.7,minTargetMps:0.1,maxTargetMps:35,gradeWindowM:85},
   stravaSegments:[],activeSegment:null,segmentTimes:{},
   records:[],history:[],timer:null,demoTimer:null,route:[],routeLen:0,routeName:'No course',map:null,line:null,rider:null,
+  mapTile:'osm',mapTileLayer:null,summaryOpen:false,rampTest:{active:false,stage:'idle',step:0,targetPower:100,lastStepMs:0},
   live:{socket:null,connected:false,room:'',name:'',clientId:'',peers:new Map(),markers:new Map(),webRTCpeers:new Map(),lastSent:0,rateMs:1000,color:'#19d3ef'}
 };
 const $=id=>document.getElementById(id);
@@ -379,25 +403,6 @@ function stepSimulation(dt){
   return {meters:S.vMps*safeDt,grade,targetMps:target};
 }
 function updateUI(){scheduleUI()}
-function updateUINow(){
-  const z=powerZone(S.power);
-  $('powerPanel').style.setProperty('--zone',z[1]);
-  setNum('power',Math.round(S.power));
-  setNum('cadence',Math.round(S.cadence)||0);
-  setNum('speed',S.speed.toFixed(1));
-  setNum('hr',S.hr?Math.round(S.hr):'--');
-  setNum('hrZone',lthrZone(S.hr));
-  setNum('distance',(S.distance/1000).toFixed(2));
-  setNum('calories',Math.round(S.calories));
-  setNum('zone',z[0]);
-  $('zoneBar').style.width=clamp(z[2]/1.6,0,100)+'%';
-  setNum('time',fmtTime(S.elapsed));
-  const avg=S.records.length?Math.round(S.records.reduce((a,r)=>a+r.power,0)/S.records.length):0;
-  setNum('avgPower',avg);
-  updateSegmentReadout();
-  updateRouteReadout();
-  drawChart();
-}
 function sample(){
   const now=Date.now();
   const dt=S.lastTs?(now-S.lastTs)/1000:1;
@@ -662,10 +667,19 @@ function drawRoute(){
   $('courseEmpty').classList.add('hidden');
   $('map').classList.remove('hidden');
   if(!S.map)S.map=L.map('map',{zoomControl:true}).setView([45.5019,-73.5674],13);
-  if(!S.map._tileLayer){S.map._tileLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'OpenStreetMap'}).addTo(S.map)}
+  setMapTile(S.mapTile||'osm');
   if(S.line)S.line.remove(); if(S.rider)S.rider.remove(); S.rider=null;
   const latlng=S.route.map(p=>[p.lat,p.lon]); S.line=L.polyline(latlng,{color:'#19d3ef',weight:4}).addTo(S.map); S.map.fitBounds(S.line.getBounds(),{padding:[20,20]});
-  setTimeout(()=>{S.map.invalidateSize();S.map.fitBounds(S.line.getBounds(),{padding:[20,20]});updateRouteReadout()},60);
+  setTimeout(()=>{S.map.invalidateSize();S.map.fitBounds(S.line.getBounds(),{padding:[20,20]});updateRouteReadout();},60);
+}
+function setMapTile(type){
+  if(!S.map||!window.L) return;
+  const layerUrl = window.getTileUrl ? window.getTileUrl(type) : (type==='satellite' ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+  const attribution = type==='satellite' ? 'Esri Satellite' : 'OpenStreetMap';
+  if(S.mapTileLayer) S.map.removeLayer(S.mapTileLayer);
+  S.mapTileLayer = L.tileLayer(layerUrl,{maxZoom:19,attribution});
+  S.mapTileLayer.addTo(S.map);
+  setState({mapTile:type});
 }
 function decodePolyline(str){
   let index=0,lat=0,lng=0,points=[];
@@ -679,6 +693,108 @@ function decodePolyline(str){
     points.push({lat:lat/1e5,lon:lng/1e5});
   }
   return points;
+}
+function updateSummaryOverlay(){
+  const overlay=$('summaryOverlay');
+  if(!overlay) return;
+  overlay.classList.toggle('hidden',!S.summaryOpen);
+}
+function renderSummary(){
+  if(!S.summaryOpen) return;
+  const duration=S.elapsed;
+  const avgPower=S.records.length?Math.round(S.records.reduce((sum,r)=>sum+r.power,0)/S.records.length):0;
+  const maxPower=S.records.length?Math.max(...S.records.map(r=>r.power)):0;
+  const avgHr=S.records.length?Math.round(S.records.reduce((sum,r)=>sum+(r.hr||0),0)/S.records.length):0;
+  const climb=S.route.length?S.route.reduce((sum,p,i)=>i?sum+Math.max(0,p.ele-S.route[i-1].ele):0,0):0;
+  $('summaryDuration').textContent=formatDuration(duration);
+  $('summaryDistance').textContent=(S.distance/1000).toFixed(2)+' km';
+  $('summaryAvgPower').textContent=avgPower+' W';
+  $('summaryMaxPower').textContent=maxPower+' W';
+  $('summaryClimb').textContent=Math.round(climb)+' m';
+  $('summaryAvgHr').textContent=(avgHr||'--')+' bpm';
+  if(window.drawPowerDurationCurve) window.drawPowerDurationCurve($('summaryPdcChart'),S.records,S.ftp);
+}
+function openSummary(){
+  setState({summaryOpen:true});
+  updateSummaryOverlay();
+  renderSummary();
+}
+function closeSummary(){
+  setState({summaryOpen:false});
+  updateSummaryOverlay();
+}
+function startFtpRampTest(){
+  setState({rampTest:{active:true,stage:'warmup',step:0,targetPower:100,lastStepMs:Date.now()}});
+  const btn=$('ftpRampBtn'); if(btn) btn.textContent='Stop Ramp';
+  status('FTP ramp test started');
+}
+function stopFtpRampTest(){
+  setState({rampTest:{active:false,stage:'idle',step:0,targetPower:100,lastStepMs:0}});
+  const btn=$('ftpRampBtn'); if(btn) btn.textContent='FTP Ramp Test';
+  status('FTP ramp test stopped');
+}
+function updateRampTest(){
+  if(!S.rampTest.active) return;
+  const now=Date.now();
+  const elapsed=(now-S.rampTest.lastStepMs)/1000;
+  const interval=30;
+  let {step,targetPower}=S.rampTest;
+  if(elapsed>=interval){
+    step++;
+    targetPower=Math.min(600,100 + step*20);
+    setState({rampTest:{...S.rampTest,step,targetPower,lastStepMs:now}});
+    status('Ramp target '+targetPower+' W');
+  }
+  S.power=targetPower;
+  if(S.erg && S.ctrlChar) sendErg(S.power);
+}
+function drawElevationAndPdc(){
+  if(window.drawElevationProfile) window.drawElevationProfile($('elevationChart'),S.route);
+  if(window.drawPowerDurationCurve) window.drawPowerDurationCurve($('pdcChart'),S.records,S.ftp);
+}
+function initFeatureUI(){
+  const tiles=$('tileSelector'); if(tiles){tiles.value=S.mapTile||'osm'; tiles.onchange=e=>setMapTile(e.target.value||'osm')}
+  const summary=$('summaryBtn'); if(summary) summary.onclick=openSummary;
+  const closeSummaryBtn=$('closeSummaryBtn'); if(closeSummaryBtn) closeSummaryBtn.onclick=closeSummary;
+  const ftpRamp=$('ftpRampBtn'); if(ftpRamp) ftpRamp.onclick=()=>S.rampTest.active?stopFtpRampTest():startFtpRampTest();
+  updateSummaryOverlay();
+}
+function formatDuration(sec){return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');}
+function computePowerDurationCurve(records){
+  const durations=[1,5,10,20,30,60,120,300,600];
+  if(!records.length) return durations.map(sec=>({sec,watts:0}));
+  return durations.map(sec=>{
+    let best=0;
+    for(let end=0;end<records.length;end++){
+      const endTime=records[end].time;
+      const startTime=endTime-sec*1000;
+      let sum=0,count=0;
+      for(let i=end;i>=0 && records[i].time>=startTime;i--){sum+=records[i].power;count++}
+      if(count) best=Math.max(best,sum/count);
+    }
+    return {sec,watts:Math.round(best)};
+  });
+}
+function updateUINow(){
+  const z=powerZone(S.power);
+  $('powerPanel').style.setProperty('--zone',z[1]);
+  setNum('power',Math.round(S.power));
+  setNum('cadence',Math.round(S.cadence)||0);
+  setNum('speed',S.speed.toFixed(1));
+  setNum('hr',S.hr?Math.round(S.hr):'--');
+  setNum('hrZone',lthrZone(S.hr));
+  setNum('distance',(S.distance/1000).toFixed(2));
+  setNum('calories',Math.round(S.calories));
+  setNum('zone',z[0]);
+  $('zoneBar').style.width=clamp(z[2]/1.6,0,100)+'%';
+  setNum('time',fmtTime(S.elapsed));
+  const avg=S.records.length?Math.round(S.records.reduce((a,r)=>a+r.power,0)/S.records.length):0;
+  setNum('avgPower',avg);
+  updateSegmentReadout();
+  updateRouteReadout();
+  drawChart();
+  drawElevationAndPdc();
+  renderSummary();
 }
 function nearestRouteDistance(pt){
   if(!S.routeLen||!S.route.length)return{dist:0,meters:Infinity};
@@ -1077,6 +1193,7 @@ $('liveServer').value=LiveShare.defaultServer();$('liveRoom').value=new URLSearc
 $('liveRate').onchange=e=>S.live.rateMs=parseInt(e.target.value,10)||1000;
 $('liveName').onchange=e=>localStorage.setItem('veloxLiveName',e.target.value||'');
 $('liveJoinBtn').onclick=()=>LiveShare.join();$('liveLeaveBtn').onclick=()=>LiveShare.leave();
+initFeatureUI();
 window.addEventListener('resize',()=>{updateUI(); if(S.map)setTimeout(()=>S.map.invalidateSize(),50)});
 
 
@@ -1345,6 +1462,23 @@ window.addEventListener('resize',()=>{updateUI(); if(S.map)setTimeout(()=>S.map.
 
 initApp(); updateUINow();
 </script>
+<div id="summaryOverlay" class="overlay hidden">
+  <div class="overlayPanel">
+    <div class="overlayHeader">
+      <h3>Ride Summary</h3>
+      <button id="closeSummaryBtn" aria-label="Close summary">×</button>
+    </div>
+    <div class="summaryGrid">
+      <div class="summaryBox"><b id="summaryDuration">00:00</b><span>duration</span></div>
+      <div class="summaryBox"><b id="summaryDistance">0.00 km</b><span>distance</span></div>
+      <div class="summaryBox"><b id="summaryAvgPower">0 W</b><span>average power</span></div>
+      <div class="summaryBox"><b id="summaryMaxPower">0 W</b><span>max power</span></div>
+      <div class="summaryBox"><b id="summaryClimb">0 m</b><span>total climb</span></div>
+      <div class="summaryBox"><b id="summaryAvgHr">-- bpm</b><span>average HR</span></div>
+    </div>
+    <canvas class="summaryChart" id="summaryPdcChart"></canvas>
+  </div>
+</div>
 <div style="position:fixed;bottom:0;right:0;font-size:10px;color:#666;padding:2px;background:rgba(0,0,0,0.5);border-radius:3px;">v7466033</div>
 </body>
 </html>
