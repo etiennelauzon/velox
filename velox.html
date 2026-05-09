@@ -933,8 +933,9 @@ const LiveShare={
     }
   },
   addPeer(peer){
-    if(S.live.peers.has(peer.id))return;
+    const alreadyHasPeer = S.live.peers.has(peer.id);
     S.live.peers.set(peer.id, peer);
+    if(S.live.webRTCpeers?.has(peer.id)) return;
     // Design decision: Create WebRTC peer connection for direct data sharing
     // Hypothesis: Peer-to-peer reduces server load for frequent location updates
     const p = new SimplePeer({ initiator: peer.id < S.live.clientId, trickle: false });
