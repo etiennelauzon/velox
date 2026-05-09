@@ -1002,16 +1002,15 @@ const LiveShare={
     if(!force&&now-S.live.lastSent<S.live.rateMs)return;
     S.live.lastSent=now;
     const data = { ...this.snapshot(), id: S.live.clientId, name: S.live.name, color: S.live.color };
-    // Design decision: Prefer WebRTC data channels for direct peer sharing, fallback to server
-    // Hypothesis: Direct connections reduce latency and server bandwidth for real-time data
+    // Design decision: Prefer WebRTC data channels for direct peer sharing, but keep Socket.IO updates alive.
+    // Hypothesis: Always updating the server prevents stale peer removal and keeps room state stable.
     if(S.live.webRTCpeers){
       S.live.webRTCpeers.forEach(p => {
         if(p.connected) p.send(JSON.stringify(data));
       });
     }
-    // Fallback: Use Socket.IO if no WebRTC peers connected
-    if(!S.live.webRTCpeers || S.live.webRTCpeers.size === 0){
-      S.live.socket.emit('location:update', this.snapshot());
+    if(S.live.socket && S.live.socket.connected){
+      S.live.socket.emit('location:update', data);
     }
   }
 };
