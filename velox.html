@@ -1186,13 +1186,24 @@ $('trainerBtn').onclick=connectTrainer;$('hrmBtn').onclick=connectHrm;$('demoBtn
 $('gpxBtn').onclick=()=>download(buildGPX(S.records),'gpx','application/gpx+xml');$('fitBtn').onclick=()=>download(buildFIT(S.records),'fit','application/octet-stream');
 $('uploadCourseBtn').onclick=uploadCourse;$('courseFile').onchange=uploadCourse;$('presetRoutes').onchange=loadPresetRoute;$('clearLoopBtn').onclick=clearCourse;$('gradeToErg').onchange=e=>S.gradeErg=e.target.checked;
 $('stravaSegmentsBtn').onclick=loadStravaStarredSegments;
-$('ftp').onchange=e=>setState({ftp:Number(e.target.value)||250});$('lthr').onchange=e=>setState({lthr:Number(e.target.value)||165});
-$('riderWeight').onchange=e=>{S.physics.riderWeightKg=clamp(Number(e.target.value)||72,35,160);e.target.value=S.physics.riderWeightKg;status('Rider weight set to '+S.physics.riderWeightKg+' kg')};
-$('ergWatts').onchange=e=>sendErg(Number(e.target.value)||200);$('ergToggle').onclick=()=>{S.erg=!S.erg;$('ergToggle').textContent=S.erg?'ERG On':'ERG Off';if(S.erg)sendErg(S.ergWatts)};
+function loadPersistedSettings(){
+  const keys=['ftp','lthr','ergWatts'];
+  for(const k of keys){
+    const v=localStorage.getItem('velox_'+k);
+    if(v!==null){S[k]=Number(v);const el=$(k);if(el)el.value=S[k];}
+  }
+  const w=localStorage.getItem('velox_riderWeightKg');
+  if(w){S.physics.riderWeightKg=Number(w);const el=$('riderWeight');if(el)el.value=S.physics.riderWeightKg;}
+}
+$('ftp').onchange=e=>{S.ftp=Number(e.target.value)||250;localStorage.setItem('velox_ftp',S.ftp);setState({ftp:S.ftp});};
+$('lthr').onchange=e=>{S.lthr=Number(e.target.value)||165;localStorage.setItem('velox_lthr',S.lthr);setState({lthr:S.lthr});};
+$('riderWeight').onchange=e=>{S.physics.riderWeightKg=clamp(Number(e.target.value)||72,35,160);e.target.value=S.physics.riderWeightKg;localStorage.setItem('velox_riderWeightKg',S.physics.riderWeightKg);status('Rider weight set to '+S.physics.riderWeightKg+' kg')};
+$('ergWatts').onchange=e=>{const w=Number(e.target.value)||200;S.ergWatts=w;localStorage.setItem('velox_ergWatts',w);sendErg(w)};$('ergToggle').onclick=()=>{S.erg=!S.erg;$('ergToggle').textContent=S.erg?'ERG On':'ERG Off';if(S.erg)sendErg(S.ergWatts)};
 $('liveServer').value=LiveShare.defaultServer();$('liveRoom').value=new URLSearchParams(location.search).get('room')||'team-ride';$('liveName').value=localStorage.getItem('veloxLiveName')||'';
 $('liveRate').onchange=e=>S.live.rateMs=parseInt(e.target.value,10)||1000;
 $('liveName').onchange=e=>localStorage.setItem('veloxLiveName',e.target.value||'');
 $('liveJoinBtn').onclick=()=>LiveShare.join();$('liveLeaveBtn').onclick=()=>LiveShare.leave();
+loadPersistedSettings();
 initFeatureUI();
 window.addEventListener('resize',()=>{updateUI(); if(S.map)setTimeout(()=>S.map.invalidateSize(),50)});
 
@@ -1460,6 +1471,7 @@ window.addEventListener('resize',()=>{updateUI(); if(S.map)setTimeout(()=>S.map.
   else wireUI();
 })();
 
+loadPersistedSettings();
 initApp(); updateUINow();
 </script>
 <div id="summaryOverlay" class="overlay hidden">
