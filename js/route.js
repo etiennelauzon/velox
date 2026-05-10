@@ -1,7 +1,6 @@
 // js/route.js — route parsing, GPX/FIT support, and map route navigation
 import { S, setState, status } from './state.js';
-import { clamp } from './physics.js';
-import { setNum } from './state.js';
+import { clamp, setNum } from './physics.js';
 import { setBusy } from './utils.js';
 
 function haversine(a, b) {
@@ -383,4 +382,17 @@ export function matchRouteSegment(segment) {
 export function updateRouteReadoutAfterLoad() {
   if (routeLoadTimeout) clearTimeout(routeLoadTimeout);
   routeLoadTimeout = setTimeout(updateRouteReadout, 60);
+}
+
+export function routeWindowAverageDistance(points, startDist, endDist) {
+  if (!points.length) return Infinity;
+
+  let total = 0;
+
+  for (const pt of points) {
+    const hit = getNearestRouteDistance(pt);
+    total += hit.meters;
+  }
+
+  return total / points.length;
 }
