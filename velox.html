@@ -11,8 +11,12 @@
   <!-- MapillaryJS (street-level imagery) -->
   <link href="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.css" rel="stylesheet" />
   <script defer src="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.js"></script>
-  <!-- Simple Peer for WebRTC -->
-  <script src="https://unpkg.com/simple-peer@9.11.1/simplepeer.min.js"></script>
+
+  <!-- Socket.IO client — required by live.js for WebRTC signalling -->
+  <script defer src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+  <!-- SimplePeer for WebRTC -->
+  <script defer src="https://unpkg.com/simple-peer@9.11.1/simplepeer.min.js"></script>
 </head>
 <body>
 <main class="app">
@@ -68,16 +72,16 @@
       <div id="map" class="hidden"></div>
         <div id="mlyWrap" class="hidden">
           <div class="mlyTop">
-            <div><b>Mapillary</b> Â· <span id="mlyStatus">Inactif</span></div>
+            <div><b>Mapillary</b> &middot; <span id="mlyStatus">Inactive</span></div>
             <div class="mlyControls">
-              <input id="mlyToken" type="password" placeholder="Token Mapillary (MLY|...)" autocomplete="off" />
-              <select id="mlyRefresh" title="RafraÃ®chissement">
+              <input id="mlyToken" type="password" placeholder="Mapillary token (MLY|...)" autocomplete="off" />
+              <select id="mlyRefresh" title="Refresh rate">
                 <option value="1000">1s</option>
                 <option value="2000" selected>2s</option>
                 <option value="3000">3s</option>
                 <option value="5000">5s</option>
               </select>
-              <select id="mlyRadius" title="Rayon">
+              <select id="mlyRadius" title="Search radius">
                 <option value="20">20m</option>
                 <option value="40">40m</option>
                 <option value="60" selected>60m</option>
@@ -88,7 +92,7 @@
             </div>
           </div>
           <div id="mly" class="mlyViewer"></div>
-          <div id="mlyFallback" class="mlyFallback hidden">Aucune image Mapillary proche â€” affichage OSM seulement.</div>
+          <div id="mlyFallback" class="mlyFallback hidden">No nearby Mapillary image &mdash; showing OSM only.</div>
         </div>
 
       <div class="body">
@@ -198,13 +202,11 @@
   </section>
 </main>
 
-<script type="module" src="js/app.js"></script>
-
 <div id="summaryOverlay" class="overlay hidden">
   <div class="overlayPanel">
     <div class="overlayHeader">
       <h3>Ride Summary</h3>
-      <button id="closeSummaryBtn" aria-label="Close summary">×</button>
+      <button id="closeSummaryBtn" aria-label="Close summary">&times;</button>
     </div>
     <div class="summaryGrid">
       <div class="summaryBox"><b id="summaryDuration">00:00</b><span>duration</span></div>
@@ -217,7 +219,10 @@
     <canvas class="summaryChart" id="summaryPdcChart"></canvas>
   </div>
 </div>
+
 <div style="position:fixed;bottom:0;right:0;font-size:10px;color:#666;padding:2px;background:rgba(0,0,0,0.5);border-radius:3px;">v7466033</div>
+
+<!-- Entry module — must come after all DOM elements and after CDN defer scripts -->
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
-
