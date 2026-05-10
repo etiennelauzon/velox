@@ -150,7 +150,7 @@ export async function loadPresetRoute() {
   if (!val) return;
   status('Loading preset route...');
   try {
-    const response = await fetch(val + '.gpx');
+    const response = await fetch('routes/' + val + '.gpx');
     if (!response.ok) throw new Error('HTTP ' + response.status);
     const text = await response.text();
     parseGpx(text, val.toUpperCase() + ' Route');
