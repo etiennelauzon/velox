@@ -1,0 +1,1065 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VELOX Rider</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#07090f;--panel:#101720;--panel2:#141f2a;--line:#233445;
+  --text:#edf5ff;--muted:#8ea2b7;--soft:#56708a;
+  --cyan:#19d3ef;--green:#44d07b;--yellow:#e9c54a;--orange:#ff8738;
+  --red:#ef4d4d;--mag:#c65cff;--blue:#5d8cff;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font:14px/1.4 Inter,system-ui,Segoe UI,Arial,sans-serif}
+button,input,select{font:inherit}
+button{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:6px;min-height:36px;padding:0 12px;cursor:pointer}
+button:hover{border-color:var(--cyan)}
+button:focus-visible,input:focus-visible{outline:2px solid rgba(25,211,239,.65);outline-offset:2px}
+button.primary{background:var(--cyan);border-color:var(--cyan);color:#041018;font-weight:800}
+button.danger{border-color:var(--red);color:#ffbaba}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select{width:100%;background:#0b1118;border:1px solid var(--line);color:var(--text);border-radius:6px;min-height:36px;padding:0 10px}
+label{display:grid;gap:5px;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.app{max-width:1480px;margin:0 auto;padding:14px;display:grid;gap:12px}
+.top{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px}
+.brand{font-size:26px;font-weight:900;letter-spacing:.14em;color:var(--cyan);white-space:nowrap}
+.brand span{color:var(--text)}
+.status{flex:1;color:var(--muted);min-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:10px;height:10px;border-radius:50%;background:#526170;box-shadow:0 0 0 1px #263544}
+.dot.on{background:var(--green);box-shadow:0 0 14px rgba(68,208,123,.75)}
+.dot.rec{background:var(--red);box-shadow:0 0 14px rgba(239,77,77,.8);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.grid{display:grid;grid-template-columns:minmax(330px,.9fr) minmax(520px,1.4fr) minmax(310px,.75fr);gap:12px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden;box-shadow:0 14px 40px rgba(0,0,0,.18)}
+.panel h2{margin:0;padding:12px 14px;border-bottom:1px solid var(--line);font-size:13px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted)}
+.body{padding:14px}
+.power{display:grid;place-items:center;min-height:272px;position:relative}
+.power:before{content:"";position:absolute;inset:0 0 auto;height:4px;background:var(--zone,var(--cyan))}
+.watts{font-size:112px;font-weight:900;line-height:.9;color:var(--zone,var(--text));font-variant-numeric:tabular-nums}
+.unit{color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-weight:800}
+.zone{margin-top:12px;color:var(--zone,var(--muted));font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.bar{width:100%;height:8px;border-radius:999px;background:#0a1118;overflow:hidden;margin-top:14px}
+.bar>i{display:block;height:100%;width:0;background:var(--zone,var(--cyan));transition:width .25s}
+.metrics{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:10px}
+.metric{background:#0b1118;border:1px solid #1e2d3d;border-radius:7px;padding:10px;min-height:72px}
+.metric b{display:block;font-size:28px;line-height:1.05;font-variant-numeric:tabular-nums}
+.metric span{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.08em}
+.wide{grid-column:1/-1}
+.chart{height:160px;width:100%;display:block;background:#0b1118;border:1px solid #1d2b39;border-radius:7px}
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row>*{flex:1}
+.row button{flex:0 0 auto}
+.hidden{display:none!important}
+#map{height:430px;background:#0b1118;border-bottom:1px solid var(--line)}
+.courseEmpty{min-height:220px;display:grid;place-items:center;padding:18px;text-align:center;color:var(--muted);background:#0b1118;border-bottom:1px solid var(--line)}
+.courseEmpty b{display:block;color:var(--text);font-size:18px;margin-bottom:6px}
+.courseEmpty span{display:block;max-width:360px;margin:auto}
+.uploadLine{display:flex;gap:8px;align-items:end}
+.uploadLine label{flex:1}
+.routeStats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.pill{border:1px solid #1e2d3d;background:#0b1118;border-radius:7px;padding:8px}
+.pill b{display:block;font-size:18px;font-variant-numeric:tabular-nums}
+.pill span{color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}
+.segmentList{margin-top:10px;display:grid;gap:8px}
+.segmentItem{border:1px solid #1e2d3d;background:#0b1118;border-radius:7px;padding:9px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.segmentItem.active{border-color:var(--cyan);box-shadow:0 0 0 1px rgba(25,211,239,.22)}
+.segmentItem.done{border-color:#2b6745}
+.segmentItem b{font-size:13px}
+.segmentItem span{color:var(--muted);font-size:11px}
+.log{height:118px;overflow:auto;background:#0b1118;border:1px solid #1d2b39;border-radius:7px;padding:8px;color:var(--muted);font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px}
+.small{font-size:12px;color:var(--muted)}
+.tog{display:flex;align-items:center;gap:8px;color:var(--muted);text-transform:none;letter-spacing:0;font-size:13px}
+.tog input{width:auto;min-height:auto}
+@media(max-width:1120px){.grid{grid-template-columns:1fr 1fr}.side{grid-column:1/-1}#map{height:360px}}
+@media(max-width:760px){.app{padding:10px}.top{align-items:flex-start;flex-wrap:wrap}.actions{justify-content:flex-start}.grid{grid-template-columns:1fr}.form{grid-template-columns:1fr}.watts{font-size:82px}.routeStats{grid-template-columns:repeat(2,1fr)}.uploadLine{display:grid}}
+
+/* --- Streetview / Mapillary panel --- */
+#mlyWrap{background:#0b1118;border-top:1px solid var(--line)}
+.mlyTop{display:flex;gap:10px;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #1d2b39;flex-wrap:wrap}
+.mlyTop b{color:var(--text)}
+#mlyStatus{color:var(--muted);font-size:12px}
+.mlyControls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mlyControls input{min-width:260px}
+.mlyControls select{width:auto;min-width:88px}
+.mlyViewer{height:320px;width:100%;transition:opacity .22s ease,transform .22s ease;will-change:opacity,transform}
+.mlyFallback{padding:10px 12px;color:var(--muted)}
+@media(max-width:760px){.mlyViewer{height:260px}.mlyControls input{min-width:180px}}
+</style>
+
+  <!-- MapillaryJS (street-level imagery) -->
+  <link href="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.css" rel="stylesheet" />
+  <script defer src="https://unpkg.com/mapillary-js@4.1.2/dist/mapillary.js"></script>
+</head>
+<body>
+<main class="app">
+  <header class="top">
+    <div class="brand">VEL<span>OX</span></div>
+    <div class="dot" id="dot"></div>
+    <div class="status" id="status">Ready</div>
+    <div class="actions">
+      <button id="trainerBtn" class="primary">Connect Trainer</button>
+      <button id="hrmBtn">Connect HRM</button>
+      <button id="demoBtn">Demo</button>
+      <button id="recBtn">Start</button>
+      <button id="gpxBtn" disabled>GPX</button>
+      <button id="fitBtn" disabled>FIT</button>
+    </div>
+  </header>
+
+  <section class="grid">
+    <div class="panel">
+      <h2>Ride</h2>
+      <div class="body">
+        <div class="power" id="powerPanel">
+          <div>
+            <div class="watts" id="power">0</div>
+            <div class="unit">watts</div>
+            <div class="zone" id="zone">Z1 Recovery</div>
+            <div class="bar"><i id="zoneBar"></i></div>
+          </div>
+        </div>
+        <div class="metrics">
+          <div class="metric"><b id="cadence">0</b><span>cadence rpm</span></div>
+          <div class="metric"><b id="speed">0.0</b><span>speed km/h</span></div>
+          <div class="metric"><b id="hr">--</b><span>heart rate bpm</span></div>
+          <div class="metric"><b id="hrZone">--</b><span>lthr zone</span></div>
+          <div class="metric"><b id="time">00:00</b><span>elapsed</span></div>
+          <div class="metric"><b id="distance">0.00</b><span>distance km</span></div>
+          <div class="metric"><b id="avgPower">0</b><span>average watts</span></div>
+          <div class="metric"><b id="calories">0</b><span>kcal</span></div>
+          <canvas class="chart wide" id="chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Course</h2>
+      <div id="courseEmpty" class="courseEmpty">
+        <div>
+          <b>No course loaded</b>
+          <span>Upload a GPX or FIT file to show the route map and move the rider marker with live speed.</span>
+        </div>
+      </div>
+      <div id="map" class="hidden"></div>
+        <div id="mlyWrap" class="hidden">
+          <div class="mlyTop">
+            <div><b>Mapillary</b> Â· <span id="mlyStatus">Inactif</span></div>
+            <div class="mlyControls">
+              <input id="mlyToken" type="password" placeholder="Token Mapillary (MLY|...)" autocomplete="off" />
+              <select id="mlyRefresh" title="RafraÃ®chissement">
+                <option value="1000">1s</option>
+                <option value="2000" selected>2s</option>
+                <option value="3000">3s</option>
+                <option value="5000">5s</option>
+              </select>
+              <select id="mlyRadius" title="Rayon">
+                <option value="20">20m</option>
+                <option value="40">40m</option>
+                <option value="60" selected>60m</option>
+                <option value="80">80m</option>
+                <option value="120">120m</option>
+              </select>
+              <label class="tog"><input id="mlyEnable" type="checkbox" checked /> Streetview</label>
+            </div>
+          </div>
+          <div id="mly" class="mlyViewer"></div>
+          <div id="mlyFallback" class="mlyFallback hidden">Aucune image Mapillary proche â€” affichage OSM seulement.</div>
+        </div>
+
+      <div class="body">
+        <div class="uploadLine">
+          <label class="wide">Course file
+            <input id="courseFile" type="file" accept=".gpx,.fit,application/gpx+xml,application/octet-stream">
+          </label>
+          <button id="uploadCourseBtn" class="primary">Upload Course</button>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button id="clearLoopBtn">Clear</button>
+          <label class="tog"><input id="gradeToErg" type="checkbox"> Grade controls trainer</label>
+        </div>
+        <div class="routeStats">
+          <div class="pill"><b id="lapDist">0.0</b><span>lap km</span></div>
+          <div class="pill"><b id="lapElev">0</b><span>climb m</span></div>
+          <div class="pill"><b id="gradeNow">0.0%</b><span>grade</span></div>
+          <div class="pill"><b id="laps">0</b><span>laps</span></div>
+        </div>
+        <div class="routeStats">
+          <div class="pill"><b id="segmentTime">--:--</b><span>segment time</span></div>
+          <div class="pill" style="grid-column:span 3"><b id="segmentName">No segment</b><span>active starred segment</span></div>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <label>Strava bearer token
+            <input id="stravaToken" type="password" placeholder="Paste token locally" autocomplete="off">
+          </label>
+          <button id="stravaSegmentsBtn">Starred Segments</button>
+        </div>
+        <div id="stravaSegments" class="segmentList"></div>
+        <p class="small" id="courseNote" style="margin-bottom:0">Upload a GPX/FIT course to ride the real track.</p>
+      </div>
+    </div>
+
+    <div class="panel side">
+      <h2>Controls</h2>
+      <div class="body">
+        <div class="form">
+          <label>FTP watts
+            <input id="ftp" type="number" min="100" max="700" value="250">
+          </label>
+          <label>LTHR bpm
+            <input id="lthr" type="number" min="80" max="230" value="165">
+          </label>
+          <label>Rider weight kg
+            <input id="riderWeight" type="number" min="35" max="160" step="0.5" value="72">
+          </label>
+          <label>ERG target watts
+            <input id="ergWatts" type="number" min="50" max="1500" value="200">
+          </label>
+        </div>
+        <div class="row" style="margin-top:10px">
+          <button id="ergToggle">ERG Off</button>
+        </div>
+        <div class="log" id="log" style="margin-top:10px"></div>
+        <p class="small">Web Bluetooth works in Chrome or Edge on localhost/HTTPS. To ride a real course, export/download it as GPX or FIT and upload it here.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const S={
+  trainer:null,hrm:null,server:null,hrServer:null,bikeChar:null,ctrlChar:null,
+  connected:false,hrConnected:false,demo:false,recording:false,erg:false,gradeErg:false,
+  ftp:250,lthr:165,ergWatts:200,
+  power:0,cadence:0,speed:0,vMps:0,trainerSpeed:0,hr:0,distance:0,routeDistance:0,calories:0,elapsed:0,lastTs:0,startMs:0,
+  physics:{riderWeightKg:72,bikeWeightKg:10,rho:1.225,g:9.81,crr:0.0045,cda:0.32,drivetrainEfficiency:0.97,tau:2.7,minTargetMps:0.1,maxTargetMps:35,gradeWindowM:85},
+  stravaSegments:[],activeSegment:null,segmentTimes:{},
+  records:[],history:[],timer:null,demoTimer:null,route:[],routeLen:0,routeName:'No course',map:null,line:null,rider:null
+};
+const $=id=>document.getElementById(id);
+const Store={
+  listeners:new Set(),
+  emit(change){this.listeners.forEach(fn=>fn(S,change));},
+  subscribe(fn){this.listeners.add(fn);return()=>this.listeners.delete(fn);}
+};
+let renderQueued=false;
+function setState(patch){
+  Object.assign(S,patch);
+  Store.emit(patch);
+}
+function mutateState(fn, label){
+  fn(S);
+  Store.emit(label||{type:'mutation'});
+}
+function scheduleUI(){
+  if(renderQueued)return;
+  renderQueued=true;
+  requestAnimationFrame(()=>{renderQueued=false;updateUINow();});
+}
+Store.subscribe(scheduleUI);
+function log(msg){const t=new Date().toLocaleTimeString();$('log').textContent='['+t+'] '+msg+'\n'+$('log').textContent}
+function status(msg){$('status').textContent=msg;log(msg)}
+function setBusy(id, busy, label){
+  const el=$(id);
+  if(!el)return;
+  el.disabled=!!busy;
+  if(label)el.textContent=label;
+}
+function bluetoothDiagnostic(){
+  if(!window.isSecureContext)return 'Web Bluetooth needs localhost or HTTPS. Open http://localhost:8010/velox-myrider.html directly in Chrome or Edge.';
+  if(!navigator.bluetooth)return 'Web Bluetooth is not exposed by this browser. Use desktop Chrome or Microsoft Edge, not Firefox/Safari/VS Code preview.';
+  return '';
+}
+function fmtTime(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
+function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
+function powerZone(w){const p=w/S.ftp*100; if(p<55)return['Z1 Recovery','var(--blue)',p]; if(p<76)return['Z2 Endurance','var(--green)',p]; if(p<88)return['Z3 Tempo','var(--yellow)',p]; if(p<101)return['Z4 Threshold','var(--orange)',p]; if(p<120)return['Z5 VO2 Max','var(--red)',p]; if(p<151)return['Z6 Anaerobic','var(--mag)',p]; return['Z7 Sprint','var(--cyan)',p]}
+function zoneColor(w){const p=w/S.ftp*100; if(p<55)return'#5d8cff'; if(p<76)return'#44d07b'; if(p<88)return'#e9c54a'; if(p<101)return'#ff8738'; if(p<120)return'#ef4d4d'; if(p<151)return'#c65cff'; return'#19d3ef'}
+function lthrZone(hr){if(!hr)return'--'; const p=hr/S.lthr*100; if(p<81)return'Z1'; if(p<89)return'Z2'; if(p<94)return'Z3'; if(p<100)return'Z4'; if(p<106)return'Z5a'; return'Z5b'}
+function setNum(id,v){$(id).textContent=v}
+const PhysicsEngine={
+  totalSystemMassKg(cfg){return cfg.riderWeightKg+cfg.bikeWeightKg;},
+  solveSpeedFromPower(powerW, gradePct, cfg){
+    const mass=this.totalSystemMassKg(cfg);
+    const p=Math.max(0,Number(powerW)||0)*cfg.drivetrainEfficiency;
+    const grade=clamp((Number(gradePct)||0)/100,-0.25,0.25);
+    const aero=0.5*cfg.rho*cfg.cda;
+    const rolling=cfg.crr*mass*cfg.g;
+    const slope=mass*cfg.g*grade;
+    let lo=cfg.minTargetMps, hi=cfg.maxTargetMps;
+    const wattsAt=v=>aero*v*v*v + (rolling+slope)*v;
+    while(wattsAt(hi)<p && hi<60)hi*=1.25;
+    for(let i=0;i<34;i++){
+      const mid=(lo+hi)/2;
+      if(wattsAt(mid)>p)hi=mid;else lo=mid;
+    }
+    const v=clamp((lo+hi)/2,cfg.minTargetMps,cfg.maxTargetMps);
+    return Number.isFinite(v)?v:cfg.minTargetMps;
+  },
+  smoothSpeed(currentMps, targetMps, dt, cfg){
+    const cur=Number.isFinite(currentMps)?Math.max(0,currentMps):0;
+    const target=Number.isFinite(targetMps)?Math.max(cfg.minTargetMps,targetMps):cfg.minTargetMps;
+    const alpha=clamp(dt/(Math.max(0.1,cfg.tau)+dt),0,1);
+    const v=cur + alpha*(target-cur);
+    return Number.isFinite(v)?Math.max(0,v):cfg.minTargetMps;
+  }
+};
+function totalSystemMassKg(){return PhysicsEngine.totalSystemMassKg(S.physics)}
+function solveSpeedFromPower(powerW, gradePct){return PhysicsEngine.solveSpeedFromPower(powerW,gradePct,S.physics)}
+function smoothSpeed(currentMps, targetMps, dt){return PhysicsEngine.smoothSpeed(currentMps,targetMps,dt,S.physics)}
+function getSmoothedGradeFromGPX(dist, windowM){
+  if(!S.routeLen||S.route.length<2)return 0;
+  const span=clamp(windowM||S.physics.gradeWindowM,20,220);
+  const back=positionAt(dist-span/2), ahead=positionAt(dist+span/2);
+  const run=Math.max(1,haversine(back,ahead));
+  const grade=(ahead.ele-back.ele)/run*100;
+  return Number.isFinite(grade)?clamp(grade,-20,20):0;
+}
+function stepSimulation(dt){
+  const safeDt=clamp(Number(dt)||1,0.05,3);
+  const grade=getSmoothedGradeFromGPX(S.routeDistance,S.physics.gradeWindowM);
+  const target=solveSpeedFromPower(S.power,grade);
+  S.vMps=smoothSpeed(S.vMps,target,safeDt,S.physics.tau);
+  S.speed=clamp(S.vMps*3.6,0,S.physics.maxTargetMps*3.6);
+  return {meters:S.vMps*safeDt,grade,targetMps:target};
+}
+function updateUI(){scheduleUI()}
+function updateUINow(){
+  const z=powerZone(S.power);
+  $('powerPanel').style.setProperty('--zone',z[1]);
+  setNum('power',Math.round(S.power));
+  setNum('cadence',Math.round(S.cadence)||0);
+  setNum('speed',S.speed.toFixed(1));
+  setNum('hr',S.hr?Math.round(S.hr):'--');
+  setNum('hrZone',lthrZone(S.hr));
+  setNum('distance',(S.distance/1000).toFixed(2));
+  setNum('calories',Math.round(S.calories));
+  setNum('zone',z[0]);
+  $('zoneBar').style.width=clamp(z[2]/1.6,0,100)+'%';
+  setNum('time',fmtTime(S.elapsed));
+  const avg=S.records.length?Math.round(S.records.reduce((a,r)=>a+r.power,0)/S.records.length):0;
+  setNum('avgPower',avg);
+  updateSegmentReadout();
+  updateRouteReadout();
+  drawChart();
+}
+function sample(){
+  const now=Date.now();
+  const dt=S.lastTs?(now-S.lastTs)/1000:1;
+  S.lastTs=now;
+  const prevRouteDistance=S.routeDistance;
+  const sim=stepSimulation(dt);
+  const meters=sim.meters;
+  S.routeDistance+=meters;
+  updateSegmentChronometer(prevRouteDistance,S.routeDistance,now);
+  if(S.recording){
+    S.elapsed=Math.floor((now-S.startMs)/1000);
+    S.distance+=meters;
+    S.calories+=Math.max(0,S.power)*dt/1000*.86;
+    const pos=positionAt(S.routeDistance);
+    S.records.push({time:now,power:Math.round(S.power),cadence:Math.round(S.cadence)||0,speed:S.speed,hr:Math.round(S.hr)||0,distance:S.distance,lat:pos.lat,lon:pos.lon,ele:pos.ele,grade:sim.grade});
+    if(S.gradeErg&&S.ctrlChar&&S.erg)sendErg(gradeWatts(sim.grade));
+  }
+  S.history.push(S.power); if(S.history.length>300)S.history.shift();
+  Store.emit({type:'sample'});
+}
+function drawChart(){
+  const c=$('chart'),ctx=c.getContext('2d'),dpr=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;
+  if(!w||!h)return; c.width=w*dpr;c.height=h*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h); ctx.fillStyle='#0b1118';ctx.fillRect(0,0,w,h);
+  const pad=26,pw=w-pad-8,ph=h-pad-8,history=downsampleHistory(S.history,Math.max(60,Math.floor(pw/2)));
+  const max=Math.max(S.ftp*1.5,100,...history)+20;
+  ctx.strokeStyle='#223246';ctx.lineWidth=1;ctx.font='10px Consolas';ctx.fillStyle='#607993';
+  [0,.5,1,1.5].forEach(f=>{const y=8+ph-(S.ftp*f/max)*ph;ctx.beginPath();ctx.moveTo(pad,y);ctx.lineTo(w-8,y);ctx.stroke();ctx.fillText(Math.round(S.ftp*f),4,y+3)});
+  if(history.length<2)return;
+  ctx.lineWidth=2.5;ctx.lineCap='round';
+  for(let i=1;i<history.length;i++){
+    const a=history[i-1],b=history[i],den=Math.max(1,history.length-1);
+    const x1=pad+((i-1)/den)*pw,y1=8+ph-(a/max)*ph;
+    const x2=pad+(i/den)*pw,y2=8+ph-(b/max)*ph;
+    ctx.strokeStyle=zoneColor(b);
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
+  }
+}
+function downsampleHistory(values, limit){
+  if(values.length<=limit)return values;
+  const out=[],bucket=values.length/limit;
+  for(let i=0;i<limit;i++){
+    const start=Math.floor(i*bucket),end=Math.min(values.length,Math.floor((i+1)*bucket));
+    let max=0;
+    for(let j=start;j<end;j++)max=Math.max(max,values[j]||0);
+    out.push(max);
+  }
+  return out;
+}
+async function connectTrainer(){
+  const btProblem=bluetoothDiagnostic();
+  if(btProblem){status(btProblem);return}
+  try{
+    status('Scanning for FTMS trainer');
+    const dev=await navigator.bluetooth.requestDevice({acceptAllDevices:true,optionalServices:['fitness_machine']});
+    S.trainer=dev; dev.addEventListener('gattserverdisconnected',()=>{S.connected=false;$('dot').classList.remove('on');status('Trainer disconnected')});
+    const server=await dev.gatt.connect(); S.server=server;
+    const ftms=await server.getPrimaryService('fitness_machine');
+    const bike=await ftms.getCharacteristic('00002ad2-0000-1000-8000-00805f9b34fb');
+    bike.addEventListener('characteristicvaluechanged',parseBike); await bike.startNotifications(); S.bikeChar=bike;
+    try{S.ctrlChar=await ftms.getCharacteristic('00002ad9-0000-1000-8000-00805f9b34fb');await S.ctrlChar.startNotifications();await S.ctrlChar.writeValueWithResponse(new Uint8Array([0x00]))}catch(e){log('Trainer control point unavailable')}
+    S.connected=true;$('dot').classList.add('on');$('trainerBtn').textContent=dev.name||'Trainer Connected';status('Trainer connected: '+(dev.name||'FTMS device'));
+  }catch(e){if(e.name!=='NotFoundError')status('Trainer error: '+e.message)}
+}
+async function connectGattWithRetry(dev, label){
+  let last;
+  for(let attempt=1;attempt<=3;attempt++){
+    try{
+      if(dev.gatt.connected)dev.gatt.disconnect();
+      await new Promise(r=>setTimeout(r,attempt===1?100:700));
+      status(label+' GATT connect attempt '+attempt);
+      return await dev.gatt.connect();
+    }catch(e){last=e;log(label+' attempt '+attempt+' failed: '+e.name+' '+e.message)}
+  }
+  throw last;
+}
+function withTimeout(promise, ms, label){
+  return Promise.race([
+    promise,
+    new Promise((_,reject)=>setTimeout(()=>reject(new Error(label+' timed out after '+Math.round(ms/1000)+'s')),ms))
+  ]);
+}
+function garminHrmTip(dev){
+  const name=(dev?.name||'').toLowerCase();
+  return name.includes('fenix')||name.includes('garmin')?' This Garmin endpoint connected, but did not expose a usable Web Bluetooth Heart Rate service. Try the HRM-Pro Plus chest strap, Virtual Run after forgetting the device in Chrome/Windows, or enter HR manually for now.':'';
+}
+async function connectHrm(){
+  const btProblem=bluetoothDiagnostic();
+  if(btProblem){status(btProblem);return}
+  try{
+    status('Scanning for heart rate monitor');
+    const dev=await navigator.bluetooth.requestDevice({filters:[{services:['heart_rate']}],optionalServices:['battery_service','device_information']});
+    S.hrm=dev; dev.addEventListener('gattserverdisconnected',()=>{S.hrConnected=false;$('hrmBtn').textContent='Connect HRM';status('HRM disconnected')});
+    const server=await connectGattWithRetry(dev,'HRM'); S.hrServer=server;
+    status('Looking for Heart Rate service on '+(dev.name||'selected device'));
+    try{
+      const services=await withTimeout(server.getPrimaryServices(),12000,'BLE service discovery');
+      log('Allowed BLE services: '+(services.map(s=>s.uuid).join(', ')||'none returned'));
+    }catch(e){log('BLE service discovery note: '+e.message)}
+    const svc=await withTimeout(server.getPrimaryService('heart_rate'),20000,'Heart Rate service lookup');
+    const chr=await withTimeout(svc.getCharacteristic('00002a37-0000-1000-8000-00805f9b34fb'),12000,'Heart Rate measurement lookup');
+    chr.addEventListener('characteristicvaluechanged',parseHr); await withTimeout(chr.startNotifications(),12000,'Heart Rate notifications');
+    S.hrConnected=true;$('hrmBtn').textContent=dev.name||'HRM Connected';status('HRM connected: '+(dev.name||'Heart Rate'));
+  }catch(e){if(e.name!=='NotFoundError')status('HRM error: '+e.name+' '+e.message+garminHrmTip(S.hrm))}
+}
+function parseBike(ev){
+  const v=ev.target.value, flags=v.getUint16(0,true); let o=2;
+  if(!(flags&1)){S.trainerSpeed=v.getUint16(o,true)*.01;o+=2}
+  if(flags&2)o+=2;
+  if(flags&4){S.cadence=v.getUint16(o,true)*.5;o+=2}
+  if(flags&8)o+=2;
+  if(flags&16)o+=3;
+  if(flags&32)o+=2;
+  if(flags&64){S.power=Math.max(0,v.getInt16(o,true));o+=2}
+  if(flags&128)o+=2;
+  if(flags&256){const cal=v.getUint16(o,true);if(cal!==0xffff)S.calories=cal;o+=5}
+  if(flags&512){S.hr=v.getUint8(o);o++}
+  sample();
+}
+function parseHr(ev){const v=ev.target.value,f=v.getUint8(0);setState({hr:(f&1)?v.getUint16(1,true):v.getUint8(1)})}
+function startDemo(){
+  S.demo=true;$('demoBtn').textContent='Stop Demo';$('dot').classList.add('on');let t=0;
+  S.demoTimer=setInterval(()=>{t+=.08; const target=S.erg?S.ergWatts:210+Math.sin(t)*70+Math.sin(t*2.3)*28;S.power=clamp(target+(Math.random()-.5)*16,0,900);S.cadence=88+Math.sin(t*.8)*8+(Math.random()-.5)*3;S.hr=132+S.power*.11+Math.sin(t*.25)*5;sample()},1000);
+  status('Demo stream active');
+}
+function stopDemo(){S.demo=false;clearInterval(S.demoTimer);$('demoBtn').textContent='Demo';if(!S.connected)$('dot').classList.remove('on');status('Demo stopped')}
+function startRide(){
+  if(!S.connected&&!S.demo){status('Connect a trainer or start demo');return}
+  S.recording=true;S.records=[];S.distance=0;S.routeDistance=0;S.vMps=0;S.speed=0;S.calories=0;S.elapsed=0;S.startMs=Date.now();S.lastTs=0;S.activeSegment=null;S.segmentTimes={};
+  $('recBtn').textContent='Stop';$('recBtn').classList.add('danger');$('dot').classList.add('rec');$('gpxBtn').disabled=true;$('fitBtn').disabled=true;
+  S.timer=setInterval(()=>{S.elapsed=Math.floor((Date.now()-S.startMs)/1000);Store.emit({type:'tick'})},1000);
+  status('Recording started');
+}
+function stopRide(){
+  S.recording=false;clearInterval(S.timer);$('recBtn').textContent='Start';$('recBtn').classList.remove('danger');$('dot').classList.remove('rec');
+  $('gpxBtn').disabled=!S.records.length;$('fitBtn').disabled=!S.records.length;
+  status('Recording stopped: '+S.records.length+' samples');
+}
+async function sendErg(w){
+  S.ergWatts=Math.round(clamp(w,50,1500));$('ergWatts').value=S.ergWatts;
+  if(!S.ctrlChar)return;
+  try{await S.ctrlChar.writeValueWithResponse(new Uint8Array([0x05,S.ergWatts&255,(S.ergWatts>>8)&255]))}catch(e){log('ERG write failed: '+e.message)}
+}
+function gradeWatts(grade){return clamp(S.ergWatts + grade*18,70,800)}
+function clearCourse(){S.route=[];S.routeLen=0;S.routeDistance=0;S.vMps=0;S.speed=0;S.routeName='No course';S.stravaSegments=[];S.activeSegment=null;S.segmentTimes={};if(S.line)S.line.remove();if(S.rider)S.rider.remove();S.rider=null;$('map').classList.add('hidden');$('courseEmpty').classList.remove('hidden');setNum('lapDist','0.0');setNum('lapElev','0');setNum('gradeNow','0.0%');setNum('laps','0');setNum('segmentTime','--:--');setNum('segmentName','No segment');$('stravaSegments').innerHTML='';$('courseNote').textContent='Upload a GPX/FIT course to ride the real track.';status('Course cleared')}
+function haversine(a,b){const R=6371000,p=Math.PI/180,d1=(b.lat-a.lat)*p,d2=(b.lon-a.lon)*p,x=Math.sin(d1/2)**2+Math.cos(a.lat*p)*Math.cos(b.lat*p)*Math.sin(d2/2)**2;return 2*R*Math.atan2(Math.sqrt(x),Math.sqrt(1-x))}
+function finalizeRoute(points,name){
+  if(points.length<2)throw new Error('Course needs at least two GPS points');
+  let total=0, climb=0, prev=null;
+  S.route=points.map((p,i)=>{
+    const point={lat:p.lat,lon:p.lon,ele:Number.isFinite(p.ele)?p.ele:0,dist:0,grade:0};
+    if(prev){
+      total+=haversine(prev,point); point.dist=total;
+      const rise=point.ele-prev.ele; if(rise>0)climb+=rise;
+      const dd=Math.max(1,point.dist-prev.dist); point.grade=clamp(rise/dd*100,-20,20);
+    }
+    prev=point; return point;
+  });
+  S.routeLen=total;
+  S.route.forEach(point=>{point.smoothedGrade=getSmoothedGradeFromGPX(point.dist,S.physics.gradeWindowM)});
+  S.routeName=name||'Uploaded course'; S.routeDistance=0; S.vMps=0; S.speed=0; S.stravaSegments=[]; S.activeSegment=null; S.segmentTimes={}; $('stravaSegments').innerHTML='';
+  setNum('lapDist',(total/1000).toFixed(1)); setNum('lapElev',Math.round(climb));
+  $('courseNote').textContent='Loaded '+S.routeName+' from file. Demo/live speed now moves along this actual uploaded track.';
+  drawRoute(); status('Course loaded: '+S.routeName+' Â· '+(total/1000).toFixed(1)+' km');
+}
+function textOf(node,name){
+  const found=Array.from(node.getElementsByTagName('*')).find(x=>x.localName===name);
+  return found?found.textContent:'';
+}
+function parseGpx(text,name){
+  const doc=new DOMParser().parseFromString(text,'application/xml');
+  if(doc.querySelector('parsererror'))throw new Error('Invalid GPX XML');
+  const pts=Array.from(doc.getElementsByTagName('trkpt')).map(n=>({
+    lat:Number(n.getAttribute('lat')),
+    lon:Number(n.getAttribute('lon')),
+    ele:Number(textOf(n,'ele'))||0
+  })).filter(p=>Number.isFinite(p.lat)&&Number.isFinite(p.lon));
+  const trkName=textOf(doc,'name')||name;
+  finalizeRoute(pts,trkName);
+}
+function readFitValue(view,offset,size,type,little){
+  const base=type&31;
+  if(size===1)return view.getUint8(offset);
+  if(size===2)return base===0x03?view.getInt16(offset,little):view.getUint16(offset,little);
+  if(size===4)return base===0x05?view.getInt32(offset,little):view.getUint32(offset,little);
+  return null;
+}
+function parseFit(buf,name){
+  const view=new DataView(buf), header=view.getUint8(0), dataSize=view.getUint32(4,true), end=header+dataSize, defs={}, pts=[];
+  let off=header;
+  while(off<end){
+    const h=view.getUint8(off++);
+    const local=(h&0x80)?((h>>5)&3):(h&15);
+    if(h&0x40){
+      off++; const little=view.getUint8(off++)===0; const global=view.getUint16(off,little); off+=2;
+      const count=view.getUint8(off++), fields=[];
+      for(let i=0;i<count;i++)fields.push({num:view.getUint8(off++),size:view.getUint8(off++),type:view.getUint8(off++)});
+      if(h&0x20){const dc=view.getUint8(off++);off+=dc*3}
+      defs[local]={global,fields,little}; continue;
+    }
+    const def=defs[local]; if(!def)break;
+    const start=off, rec={};
+    for(const f of def.fields){
+      if(def.global===20)rec[f.num]=readFitValue(view,off,f.size,f.type,def.little);
+      off+=f.size;
+    }
+    if(def.global===20&&Number.isFinite(rec[0])&&Number.isFinite(rec[1])&&Math.abs(rec[0])<0x7fffffff&&Math.abs(rec[1])<0x7fffffff){
+      pts.push({
+        lat:rec[0]*180/2147483648,
+        lon:rec[1]*180/2147483648,
+        ele:Number.isFinite(rec[2])?rec[2]/5-500:0
+      });
+    }
+    if(off<=start)break;
+  }
+  finalizeRoute(pts,name.replace(/\.fit$/i,''));
+}
+async function uploadCourse(){
+  const file=$('courseFile').files[0];
+  if(!file){status('Choose a GPX or FIT file first');return}
+  setBusy('uploadCourseBtn',true,'Loading...');
+  $('courseNote').textContent='Loading '+file.name+'...';
+  try{
+    if(file.name.toLowerCase().endsWith('.gpx'))parseGpx(await file.text(),file.name.replace(/\.gpx$/i,''));
+    else if(file.name.toLowerCase().endsWith('.fit'))parseFit(await file.arrayBuffer(),file.name);
+    else status('Unsupported course file. Use GPX or FIT.');
+  }catch(e){
+    $('courseNote').textContent='Course load failed: '+e.message;
+    status('Course load failed: '+e.message);
+  }finally{
+    setBusy('uploadCourseBtn',false,'Upload Course');
+  }
+}
+function positionAt(dist){
+  if(!S.routeLen||!S.route.length)return{lat:0,lon:0,ele:0,grade:0};
+  const d=dist%S.routeLen; let i=1; while(i<S.route.length&&S.route[i].dist<d)i++;
+  const a=S.route[i-1]||S.route[0],b=S.route[i]||S.route[0], span=Math.max(1,b.dist-a.dist), t=clamp((d-a.dist)/span,0,1);
+  const grade=Number.isFinite(a.smoothedGrade)&&Number.isFinite(b.smoothedGrade)?a.smoothedGrade+(b.smoothedGrade-a.smoothedGrade)*t:(b.grade||0);
+  return{lat:a.lat+(b.lat-a.lat)*t,lon:a.lon+(b.lon-a.lon)*t,ele:a.ele+(b.ele-a.ele)*t,grade};
+}
+function updateRouteReadout(){
+  const p=positionAt(S.routeDistance), grade=getSmoothedGradeFromGPX(S.routeDistance,S.physics.gradeWindowM); setNum('gradeNow',(grade||0).toFixed(1)+'%'); setNum('laps',S.routeLen?Math.floor(S.routeDistance/S.routeLen):0);
+  if(S.map&&S.routeLen){if(!S.rider)S.rider=L.circleMarker([p.lat,p.lon],{radius:7,color:'#19d3ef',fillColor:'#19d3ef',fillOpacity:1}).addTo(S.map);else S.rider.setLatLng([p.lat,p.lon])}
+}
+function drawRoute(){
+  if(!window.L){status('Map library is still loading. Try Upload Course again in a moment.');return}
+  $('courseEmpty').classList.add('hidden');
+  $('map').classList.remove('hidden');
+  if(!S.map)S.map=L.map('map',{zoomControl:true}).setView([45.5019,-73.5674],13);
+  if(!S.map._tileLayer){S.map._tileLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'OpenStreetMap'}).addTo(S.map)}
+  if(S.line)S.line.remove(); if(S.rider)S.rider.remove(); S.rider=null;
+  const latlng=S.route.map(p=>[p.lat,p.lon]); S.line=L.polyline(latlng,{color:'#19d3ef',weight:4}).addTo(S.map); S.map.fitBounds(S.line.getBounds(),{padding:[20,20]});
+  setTimeout(()=>{S.map.invalidateSize();S.map.fitBounds(S.line.getBounds(),{padding:[20,20]});updateRouteReadout()},60);
+}
+function decodePolyline(str){
+  let index=0,lat=0,lng=0,points=[];
+  while(index<str.length){
+    let b,shift=0,result=0;
+    do{b=str.charCodeAt(index++)-63;result|=(b&0x1f)<<shift;shift+=5}while(b>=0x20);
+    lat+=(result&1)?~(result>>1):(result>>1);
+    shift=0;result=0;
+    do{b=str.charCodeAt(index++)-63;result|=(b&0x1f)<<shift;shift+=5}while(b>=0x20);
+    lng+=(result&1)?~(result>>1):(result>>1);
+    points.push({lat:lat/1e5,lon:lng/1e5});
+  }
+  return points;
+}
+function nearestRouteDistance(pt){
+  if(!S.routeLen||!S.route.length)return{dist:0,meters:Infinity};
+  let best={dist:0,meters:Infinity};
+  const lat0=pt.lat*Math.PI/180,mPerLat=111320,mPerLon=111320*Math.max(0.2,Math.cos(lat0));
+  for(let i=1;i<S.route.length;i++){
+    const a=S.route[i-1],b=S.route[i];
+    const ax=(a.lon-pt.lon)*mPerLon,ay=(a.lat-pt.lat)*mPerLat;
+    const bx=(b.lon-pt.lon)*mPerLon,by=(b.lat-pt.lat)*mPerLat;
+    const vx=bx-ax,vy=by-ay,len2=Math.max(1,vx*vx+vy*vy);
+    const t=clamp(-(ax*vx+ay*vy)/len2,0,1);
+    const x=ax+vx*t,y=ay+vy*t,meters=Math.sqrt(x*x+y*y);
+    if(meters<best.meters)best={dist:a.dist+(b.dist-a.dist)*t,meters};
+  }
+  return best;
+}
+function routeWindowAverageDistance(points,startDist,endDist){
+  if(!points.length)return Infinity;
+  const lo=Math.min(startDist,endDist),hi=Math.max(startDist,endDist),slice=S.route.filter(p=>p.dist>=lo&&p.dist<=hi);
+  const routePts=slice.length?slice:S.route;
+  let total=0,count=0;
+  for(const pt of points){
+    let best=Infinity;
+    for(const rp of routePts)best=Math.min(best,haversine(pt,rp));
+    total+=best;count++;
+  }
+  return count?total/count:Infinity;
+}
+function segmentRouteMatch(segment){
+  const start=(segment.start_latlng||[]),end=(segment.end_latlng||[]);
+  if(start.length<2||end.length<2)return null;
+  const startPoint={lat:start[0],lon:start[1]},endPoint={lat:end[0],lon:end[1]};
+  const startHit=nearestRouteDistance(startPoint);
+  const endHit=nearestRouteDistance(endPoint);
+  const sameDirection=endHit.dist>=startHit.dist;
+  const proximity=Math.max(startHit.meters,endHit.meters);
+  let avgDeviation=proximity,points=[];
+  const encoded=segment.map&&(segment.map.polyline||segment.map.summary_polyline);
+  if(encoded){
+    try{points=decodePolyline(encoded)}catch(e){points=[]}
+    if(points.length)avgDeviation=routeWindowAverageDistance(points,startHit.dist,endHit.dist);
+  }
+  const matched=proximity<=140&&avgDeviation<=90&&sameDirection;
+  const routeLength=Math.max(1,endHit.dist-startHit.dist);
+  const segmentLength=Number(segment.distance)||routeLength;
+  const projectedEndDist=Math.abs(routeLength-segmentLength)>Math.max(80,segmentLength*0.25)?startHit.dist+segmentLength:endHit.dist;
+  return {matched,startDist:startHit.dist,endDist:projectedEndDist,endPoint,startMeters:startHit.meters,endMeters:endHit.meters,avgDeviation,sameDirection};
+}
+async function fetchStravaStarredSegments(token){
+  const all=[];
+  for(let page=1;page<=5;page++){
+    const url='https://www.strava.com/api/v3/segments/starred?page='+page+'&per_page=200';
+    const res=await fetch(url,{headers:{Authorization:'Bearer '+token}});
+    if(!res.ok)throw new Error('Strava HTTP '+res.status);
+    const batch=await res.json();
+    if(!Array.isArray(batch)||!batch.length)break;
+    all.push(...batch);
+    if(batch.length<200)break;
+  }
+  return all;
+}
+function renderStravaSegments(matches){
+  const box=$('stravaSegments');
+  if(!box)return;
+  if(!matches.length){box.innerHTML='<div class="small">No starred ride segments matched this GPX.</div>';return;}
+  box.innerHTML=matches.map(({segment,match})=>{
+    const km0=(match.startDist/1000).toFixed(2),km1=(match.endDist/1000).toFixed(2);
+    const length=(segment.distance/1000).toFixed(2);
+    const state=S.activeSegment&&S.activeSegment.id===segment.id?' active':S.segmentTimes[segment.id]?' done':'';
+    const time=S.segmentTimes[segment.id]?fmtDuration(S.segmentTimes[segment.id].elapsedMs):Math.round(segment.average_grade||0)+'%';
+    return '<div class="segmentItem'+state+'"><div><b>'+segment.name+'</b><br><span>'+length+' km · route km '+km0+'-'+km1+' · avg offset '+Math.round(match.avgDeviation)+'m</span></div><span>'+time+'</span></div>';
+  }).join('');
+}
+function fmtDuration(ms){
+  const total=Math.max(0,Math.floor(ms/1000));
+  const min=Math.floor(total/60),sec=total%60,tenths=Math.floor((Math.max(0,ms)%1000)/100);
+  return String(min).padStart(2,'0')+':'+String(sec).padStart(2,'0')+'.'+tenths;
+}
+function updateSegmentReadout(){
+  if(S.activeSegment){
+    setNum('segmentName',S.activeSegment.name);
+    setNum('segmentTime',fmtDuration(Date.now()-S.activeSegment.startedMs));
+    return;
+  }
+  const last=Object.values(S.segmentTimes).sort((a,b)=>b.finishedMs-a.finishedMs)[0];
+  if(last){setNum('segmentName',last.name);setNum('segmentTime',fmtDuration(last.elapsedMs));}
+  else {setNum('segmentName','No segment');setNum('segmentTime','--:--');}
+}
+function crossedDistance(prev,next,target){return prev<target&&next>=target}
+function segmentAbsDist(baseDist,currentDist){
+  if(!S.routeLen)return baseDist;
+  const lap=Math.floor(currentDist/S.routeLen);
+  let d=baseDist+lap*S.routeLen;
+  if(d<currentDist-5)d+=S.routeLen;
+  return d;
+}
+function finishActiveSegment(now){
+  S.segmentTimes[S.activeSegment.id]={name:S.activeSegment.name,elapsedMs:now-S.activeSegment.startedMs,finishedMs:now};
+  status('Segment finished: '+S.activeSegment.name+' · '+fmtDuration(now-S.activeSegment.startedMs));
+  S.activeSegment=null;
+  renderStravaSegments(S.stravaSegments);
+}
+function updateSegmentChronometer(prevDist,nextDist,now){
+  if(!S.stravaSegments.length||!S.routeLen)return;
+  if(S.activeSegment){
+    const endAbs=S.activeSegment.endAbs;
+    const routeTolerance=Math.max(18,Math.min(55,S.activeSegment.lengthM*0.08));
+    const currentPos=positionAt(nextDist);
+    const geoClose=S.activeSegment.endPoint?haversine(currentPos,S.activeSegment.endPoint)<=Math.max(45,routeTolerance*1.5):false;
+    const farEnough=nextDist-S.activeSegment.startAbs>=Math.min(80,S.activeSegment.lengthM*0.55);
+    if(nextDist>=endAbs-routeTolerance || crossedDistance(prevDist,nextDist,endAbs) || (geoClose&&farEnough)){
+      finishActiveSegment(now);
+    }
+  }
+  if(S.activeSegment)return;
+  for(const item of S.stravaSegments){
+    const id=item.segment.id;
+    if(S.segmentTimes[id])continue;
+    const startAbs=segmentAbsDist(item.match.startDist,prevDist);
+    if(crossedDistance(prevDist,nextDist,startAbs)){
+      const rawLength=Math.max(1,item.match.endDist-item.match.startDist);
+      const lengthM=Math.max(rawLength,Number(item.segment.distance)||rawLength);
+      S.activeSegment={id,name:item.segment.name,startDist:item.match.startDist,endDist:item.match.endDist,startAbs,endAbs:startAbs+lengthM,lengthM,endPoint:item.match.endPoint,startedMs:now};
+      status('Segment started: '+item.segment.name);
+      renderStravaSegments(S.stravaSegments);
+      break;
+    }
+  }
+}
+async function loadStravaStarredSegments(){
+  if(!S.routeLen){status('Load a GPX/FIT course before matching Strava segments');return;}
+  const token=($('stravaToken').value||'').trim();
+  if(!token){status('Paste a Strava bearer token locally first');return;}
+  setBusy('stravaSegmentsBtn',true,'Loading...');
+  try{
+    status('Loading Strava starred segments');
+    const segments=await fetchStravaStarredSegments(token);
+    const matches=segments
+      .filter(s=>s.activity_type==='Ride')
+      .map(segment=>({segment,match:segmentRouteMatch(segment)}))
+      .filter(x=>x.match&&x.match.matched)
+      .sort((a,b)=>a.match.startDist-b.match.startDist);
+    S.stravaSegments=matches;
+    S.activeSegment=null;
+    S.segmentTimes={};
+    renderStravaSegments(matches);
+    status('Matched '+matches.length+' of '+segments.length+' starred Strava segments');
+  }catch(e){
+    status('Strava segments failed: '+e.message);
+  }finally{
+    setBusy('stravaSegmentsBtn',false,'Starred Segments');
+  }
+}
+function initApp(){status('Ready. Upload a GPX/FIT course or start demo.');const btProblem=bluetoothDiagnostic();if(btProblem)log('Bluetooth check: '+btProblem);else log('Bluetooth check: available')}
+function buildGPX(recs){
+  const name='VELOX Indoor Ride'; const pts=recs.map(r=>`    <trkpt lat="${r.lat.toFixed(7)}" lon="${r.lon.toFixed(7)}"><ele>${r.ele.toFixed(1)}</ele><time>${new Date(r.time).toISOString()}</time><extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>${r.hr||''}</gpxtpx:hr><gpxtpx:cad>${r.cadence}</gpxtpx:cad></gpxtpx:TrackPointExtension><pwr:PowerInWatts>${r.power}</pwr:PowerInWatts></extensions></trkpt>`).join('\n');
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="VELOX Rider" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" xmlns:pwr="http://www.garmin.com/xmlschemas/PowerExtension/v1"><metadata><name>${name}</name><time>${new Date(recs[0].time).toISOString()}</time></metadata><trk><name>${name}</name><type>cycling</type><trkseg>\n${pts}\n  </trkseg></trk></gpx>`;
+}
+function semicircle(deg){return Math.round(deg*2147483648/180)}
+function fitCRC(bytes){const t=[0,0xcc01,0xd801,0x1400,0xf001,0x3c00,0x2800,0xe401,0xa001,0x6c00,0x7800,0xb401,0x5000,0x9c01,0x8801,0x4400];let c=0;for(const b of bytes){let x=t[c&15];c=(c>>4)&0xfff;c^=x^t[b&15];x=t[c&15];c=(c>>4)&0xfff;c^=x^t[(b>>4)&15]}return c}
+function buildFIT(recs){
+  const FE=631065600,u8=v=>[v&255],u16=v=>[v&255,(v>>8)&255],u32=v=>{v>>>=0;return[v&255,(v>>8)&255,(v>>16)&255,(v>>24)&255]},s32=v=>u32(v); const body=[],p=(...a)=>a.forEach(x=>body.push(...(Array.isArray(x)?x:[x])));
+  const t0=Math.floor(recs[0].time/1000)-FE,t1=Math.floor(recs[recs.length-1].time/1000)-FE,elapsed=Math.max(1,t1-t0);
+  p([0x40],[0],[0],...u16(0),[3],[0,1,0],[1,2,0x84],[4,4,0x86]); p([0],...u8(4),...u16(255),...u32(t0));
+  p([0x41],[0],[0],...u16(20),[9]); p([253,4,0x86],[0,4,0x85],[1,4,0x85],[2,2,0x84],[3,1,2],[4,1,2],[5,4,0x86],[6,2,0x84],[7,2,0x84]);
+  for(const r of recs){p([1],...u32(Math.floor(r.time/1000)-FE),...s32(semicircle(r.lat)),...s32(semicircle(r.lon)),...u16(Math.round((r.ele+500)*5)),...u8(r.hr||255),...u8(r.cadence||255),...u32(Math.round(r.distance*100)),...u16(Math.round(r.speed/3.6*1000)),...u16(r.power||0))}
+  p([0x42],[0],[0],...u16(18),[8]); p([253,4,0x86],[2,4,0x86],[0,1,0],[1,1,0],[5,1,0],[6,1,0],[7,4,0x86],[9,4,0x86]);
+  p([2],...u32(t1),...u32(t0),...u8(8),...u8(1),...u8(2),...u8(6),...u32(elapsed*1000),...u32(Math.round(recs.at(-1).distance*100)));
+  p([0x43],[0],[0],...u16(34),[4]); p([253,4,0x86],[0,4,0x86],[1,2,0x84],[2,1,0]); p([3],...u32(t1),...u32(elapsed*1000),...u16(1),...u8(0));
+  const hdr=[14,16,8,8,...u32(body.length),0x2e,0x46,0x49,0x54], file=[...hdr,...u16(fitCRC(hdr)),...body]; return new Uint8Array([...file,...u16(fitCRC(body))]);
+}
+function download(data,ext,mime){const blob=new Blob([data],{type:mime}),a=document.createElement('a'),u=URL.createObjectURL(blob);a.href=u;a.download='velox_'+new Date(S.startMs||Date.now()).toISOString().slice(0,16).replace(/[:T]/g,'-')+'.'+ext;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),1000)}
+$('trainerBtn').onclick=connectTrainer;$('hrmBtn').onclick=connectHrm;$('demoBtn').onclick=()=>S.demo?stopDemo():startDemo();$('recBtn').onclick=()=>S.recording?stopRide():startRide();
+$('gpxBtn').onclick=()=>download(buildGPX(S.records),'gpx','application/gpx+xml');$('fitBtn').onclick=()=>download(buildFIT(S.records),'fit','application/octet-stream');
+$('uploadCourseBtn').onclick=uploadCourse;$('courseFile').onchange=uploadCourse;$('clearLoopBtn').onclick=clearCourse;$('gradeToErg').onchange=e=>S.gradeErg=e.target.checked;
+$('stravaSegmentsBtn').onclick=loadStravaStarredSegments;
+$('ftp').onchange=e=>setState({ftp:Number(e.target.value)||250});$('lthr').onchange=e=>setState({lthr:Number(e.target.value)||165});
+$('riderWeight').onchange=e=>{S.physics.riderWeightKg=clamp(Number(e.target.value)||72,35,160);e.target.value=S.physics.riderWeightKg;status('Rider weight set to '+S.physics.riderWeightKg+' kg')};
+$('ergWatts').onchange=e=>sendErg(Number(e.target.value)||200);$('ergToggle').onclick=()=>{S.erg=!S.erg;$('ergToggle').textContent=S.erg?'ERG On':'ERG Off';if(S.erg)sendErg(S.ergWatts)};
+window.addEventListener('resize',()=>{updateUI(); if(S.map)setTimeout(()=>S.map.invalidateSize(),50)});
+
+
+/* =========================
+   Mapillary streetview follow
+   ========================= */
+(function(){
+  const M={
+    enabled:true,
+    token:'',
+    viewer:null,
+    lastImageId:null,
+    lastSequenceId:null,
+    lastMeta:null,
+    lastScore:null,
+    lastPickMs:0,
+    sequenceBuffer:[],
+    preload:[],
+    moving:false,
+    refreshMs:2000,
+    radiusM:60,
+    maxCandidates:30,
+    passEpsilonM:3,
+  };
+  S.mly=M;
+
+  function setMlyStatus(txt){const el=document.getElementById('mlyStatus');if(el)el.textContent=txt;}
+  function showFallback(on){const f=document.getElementById('mlyFallback');if(!f)return;f.classList.toggle('hidden',!on);}
+
+  function rad(d){return d*Math.PI/180;}
+  function deg(r){return r*180/Math.PI;}
+  function bearing(a,b){
+    // a,b = {lat,lon} degrees. Returns 0..360
+    const phi1=rad(a.lat), phi2=rad(b.lat), dLam=rad(b.lon-a.lon);
+    const y=Math.sin(dLam)*Math.cos(phi2);
+    const x=Math.cos(phi1)*Math.sin(phi2)-Math.sin(phi1)*Math.cos(phi2)*Math.cos(dLam);
+    return (deg(Math.atan2(y,x))+360)%360;
+  }
+  function angDiff(a,b){
+    if(!Number.isFinite(a)||!Number.isFinite(b))return 180;
+    return Math.abs(((a-b+540)%360)-180);
+  }
+  function bboxAround(p, rM){
+    const lat=p.lat, lon=p.lon;
+    const dLat=rM/111320;
+    const dLon=rM/(111320*Math.max(0.2,Math.cos(rad(lat))));
+    return [lon-dLon, lat-dLat, lon+dLon, lat+dLat];
+  }
+  function routeDistanceForPoint(pt){
+    return nearestRouteDistance(pt).dist;
+  }
+  function unwrapRouteDist(dist,current){
+    if(!S.routeLen)return dist;
+    let d=dist;
+    while(d<current-M.radiusM)d+=S.routeLen;
+    while(d>current+S.routeLen-M.radiusM)d-=S.routeLen;
+    return d;
+  }
+  function routeBearingAt(dist){
+    const a=positionAt(dist-8),b=positionAt(dist+18);
+    return bearing({lat:a.lat,lon:a.lon},{lat:b.lat,lon:b.lon});
+  }
+
+  async function mlyFetch(url){
+    const res = await fetch(url,{headers:{'Authorization':'OAuth '+M.token}});
+    if(!res.ok)throw new Error('Mapillary HTTP '+res.status);
+    return await res.json();
+  }
+
+  async function ensureViewer(){
+    if(!M.enabled) return false;
+    if(!M.token){ setMlyStatus('Token requis'); return false; }
+    if(!window.mapillary||!window.mapillary.Viewer){ setMlyStatus('MapillaryJS en chargementâ€¦'); return false; }
+    if(M.viewer) return true;
+    try{
+      // Init without imageId; route-ordered frame selection calls moveTo(imageId).
+      M.viewer = new window.mapillary.Viewer({accessToken:M.token, container:'mly', component:{cover:false}});
+      setMlyStatus('PrÃªt');
+      return true;
+    }catch(e){
+      setMlyStatus('Erreur init: '+e.message);
+      return false;
+    }
+  }
+
+  function metaToPoint(meta){
+    const g = meta.geometry || meta.computed_geometry;
+    if(!g||!g.coordinates||g.coordinates.length<2)return null;
+    const lon=g.coordinates[0], lat=g.coordinates[1];
+    if(!Number.isFinite(lat)||!Number.isFinite(lon))return null;
+    return {lat,lon};
+  }
+
+  function seqId(meta){
+    const s=meta.sequence;
+    if(!s) return null;
+    if(typeof s==='string'||typeof s==='number') return String(s);
+    if(typeof s==='object' && s.id) return String(s.id);
+    return null;
+  }
+
+  async function loadSequenceImages(pos, travelBrg){
+    const bbox=bboxAround(pos, M.radiusM);
+    const url='https://graph.mapillary.com/images?fields=id&bbox='+bbox.join(',')+'&limit=80';
+    const data = await mlyFetch(url);
+    const ids = (data && data.data ? data.data.map(x=>x.id).filter(Boolean) : []);
+    if(!ids.length) return [];
+
+    // Fetch metadata for top N candidates (parallel), then score
+    const take = ids.slice(0, M.maxCandidates);
+    const metas = await Promise.all(take.map(async (id)=>{
+      try{
+        return await mlyFetch('https://graph.mapillary.com/'+id+'?fields=id,geometry,compass_angle,computed_compass_angle,sequence,thumb_1024_url');
+      }catch(e){
+        return null;
+      }
+    }));
+
+    const frames=[];
+    for(const meta of metas){
+      if(!meta) continue;
+      const pt=metaToPoint(meta);
+      if(!pt) continue;
+      const d=haversine({lat:pos.lat,lon:pos.lon},{lat:pt.lat,lon:pt.lon});
+      const routeDist=unwrapRouteDist(routeDistanceForPoint(pt),S.routeDistance);
+      const aheadM=routeDist-S.routeDistance;
+      const compass=Number.isFinite(meta.compass_angle)?meta.compass_angle:meta.computed_compass_angle;
+      const ca = Number.isFinite(compass) ? compass : NaN;
+      const localBrg=routeBearingAt(routeDist);
+      const ad = Number.isFinite(ca) ? Math.min(angDiff(travelBrg, ca),angDiff(localBrg, ca)) : 180;
+      let score = d + Math.max(0,aheadM)*0.08 + (Number.isFinite(ca)? ad*2.4 : 160) + (aheadM<-8?120:0);
+      const sid = seqId(meta);
+      if(M.lastSequenceId && sid && sid===M.lastSequenceId) score -= 22;
+      // Keep only reasonable radius (allow a bit beyond for continuity)
+      if(d > M.radiusM*1.8 || ad>72 || aheadM<-14) continue;
+      frames.push({id:meta.id,meta,pt,seq:sid,dist:d,angleDiff:ad,score,routeDist});
+    }
+    frames.sort((a,b)=>(a.routeDist-b.routeDist)||(a.score-b.score));
+    const dedup=[];
+    for(const frame of frames){
+      const prev=dedup[dedup.length-1];
+      if(prev&&Math.abs(prev.routeDist-frame.routeDist)<2){if(frame.score<prev.score)dedup[dedup.length-1]=frame;}
+      else dedup.push(frame);
+    }
+    return dedup;
+  }
+
+  function getNextImageFromSequence(routeDist){
+    if(!M.sequenceBuffer.length)return null;
+    const passed=M.sequenceBuffer.filter(f=>f.routeDist<=routeDist+M.passEpsilonM);
+    let next=passed.length?passed[passed.length-1]:M.sequenceBuffer[0];
+    if(M.lastImageId&&next.id===M.lastImageId){
+      return null;
+    }
+    return next;
+  }
+
+  function preloadImageBuffer(frame){
+    const start=Math.max(0,M.sequenceBuffer.findIndex(f=>frame&&f.id===frame.id));
+    M.preload=M.sequenceBuffer.slice(start+1,start+6).map(f=>{
+      if(!f.meta.thumb_1024_url)return null;
+      const img=new Image();
+      img.decoding='async';
+      img.src=f.meta.thumb_1024_url;
+      return img;
+    }).filter(Boolean);
+  }
+
+  async function updateImageFrame(frame){
+    if(!frame||frame.id===M.lastImageId||M.moving)return;
+    M.moving=true;
+    const el=document.getElementById('mly');
+    try{
+      if(el)el.style.opacity='0.72';
+      setMlyStatus('-> image '+frame.id+' ('+Math.round(frame.dist)+'m)');
+      await M.viewer.moveTo(frame.id);
+      M.lastImageId=frame.id;
+      M.lastSequenceId=frame.seq||M.lastSequenceId;
+      M.lastMeta=frame.meta;
+      M.lastScore=frame.score;
+      preloadImageBuffer(frame);
+      showFallback(false);
+    }finally{
+      if(el)el.style.opacity='1';
+      M.moving=false;
+    }
+  }
+
+  async function updateStreetview(pos, travelBrg){
+    if(!M.enabled){ setMlyStatus('Inactive'); showFallback(true); return; }
+    const ok = await ensureViewer();
+    if(!ok) return;
+
+    const now=Date.now();
+    const shouldRefresh=now-M.lastPickMs >= M.refreshMs-30;
+    try{
+      if(shouldRefresh){
+        M.lastPickMs=now;
+        const frames=await loadSequenceImages(pos, travelBrg);
+        const byId=new Map([...M.sequenceBuffer,...frames].map(f=>[f.id,{...f,routeDist:unwrapRouteDist(f.routeDist,S.routeDistance)}]));
+        M.sequenceBuffer=Array.from(byId.values())
+          .filter(f=>f.routeDist>=S.routeDistance-14&&f.routeDist-S.routeDistance<Math.max(120,M.radiusM*2.5))
+          .sort((a,b)=>(a.routeDist-b.routeDist)||(a.score-b.score));
+      }
+      if(!M.sequenceBuffer.length){setMlyStatus('No nearby image');showFallback(true);return;}
+      const next=getNextImageFromSequence(S.routeDistance);
+      if(next)await updateImageFrame(next);
+      else if(M.lastImageId)setMlyStatus('OK (buffer '+M.sequenceBuffer.length+')');
+    }catch(e){
+      setMlyStatus('API error: '+e.message);
+      showFallback(true);
+    }
+  }
+
+  // Hook: extend updateRouteReadout and drawRoute without rewriting original code
+  const _upd = updateRouteReadout;
+  updateRouteReadout = function(){
+    _upd();
+    if(!S.routeLen||!S.route.length) return;
+    const p = positionAt(S.routeDistance);
+    if(!Number.isFinite(p.lat)||!Number.isFinite(p.lon)|| (p.lat===0 && p.lon===0)) return;
+    const ahead = positionAt(S.routeDistance + Math.max(12, (Math.max(3,S.speed)/3.6)*2.2));
+    const brg = bearing({lat:p.lat,lon:p.lon},{lat:ahead.lat,lon:ahead.lon});
+    updateStreetview({lat:p.lat,lon:p.lon}, brg);
+  };
+
+  const _draw = drawRoute;
+  drawRoute = function(){
+    _draw();
+    const wrap=document.getElementById('mlyWrap');
+    if(wrap) wrap.classList.remove('hidden');
+  };
+
+  const _clear = clearCourse;
+  clearCourse = function(){
+    _clear();
+    M.lastImageId=null; M.lastSequenceId=null; M.lastMeta=null; M.lastScore=null; M.sequenceBuffer=[]; M.preload=[];
+    setMlyStatus('Inactif');
+    showFallback(true);
+    const wrap=document.getElementById('mlyWrap');
+    if(wrap) wrap.classList.add('hidden');
+  };
+
+  function wireUI(){
+    const enable=document.getElementById('mlyEnable');
+    const token=document.getElementById('mlyToken');
+    const refresh=document.getElementById('mlyRefresh');
+    const radius=document.getElementById('mlyRadius');
+    if(enable) enable.onchange = (e)=>{M.enabled=!!e.target.checked; setMlyStatus(M.enabled?'PrÃªt':'Inactif'); showFallback(!M.enabled);};
+    if(token){
+      token.onchange = (e)=>{
+        M.token=(e.target.value||'').trim();
+        M.viewer=null; M.lastImageId=null; M.lastSequenceId=null; M.lastMeta=null; M.lastScore=null; M.sequenceBuffer=[]; M.preload=[];
+        setMlyStatus(M.token?'Token chargÃ©':'Token requis');
+        showFallback(!M.token);
+      };
+      token.oninput = (e)=>{ if((e.target.value||'').includes('MLY|')) token.onchange(e); };
+    }
+    if(refresh) refresh.onchange = (e)=>{M.refreshMs=parseInt(e.target.value,10)||2000;};
+    if(radius) radius.onchange = (e)=>{M.radiusM=parseInt(e.target.value,10)||60;M.sequenceBuffer=[];};
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', wireUI);
+  else wireUI();
+})();
+
+initApp(); updateUINow();
+</script>
+</body>
+</html>
