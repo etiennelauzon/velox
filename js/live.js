@@ -40,7 +40,7 @@ export function updateLivePeerMarkers() {
 export const LiveShare = {
   colors: ['#19d3ef', '#44d07b', '#e9c54a', '#ff8738', '#c65cff', '#5d8cff', '#ef4d4d'],
   defaultServer() {
-    return 'http://localhost:8787';
+    return 'https://velox-u31w.onrender.com';
   },
   makeId() {
     return Math.random().toString(36).slice(2, 8).toUpperCase();
