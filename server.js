@@ -21,12 +21,8 @@ const stalePeerMs = 30_000; // Design decision: Clean up inactive peers after 30
 const maxRoomLength = 32;
 const maxNameLength = 32;
 
-app.use(express.static(__dirname, {
-  extensions: ['html']
-}));
-
-app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'velox-mapillary-live.html'));
+app.get('/health', (_req, res) => {
+  res.json({ ok: true });
 });
 
 app.get('/health', (_req, res) => {
