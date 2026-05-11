@@ -128,15 +128,20 @@ export const LiveShare = {
       socket.on('connect_error', err => { status('Live connection failed: ' + err.message); });
       socket.on('room:peers', peers => {
         S.live.peers.clear();
-        (peers || []).forEach(peer => { if (peer.id !== S.live.clientId) this.addPeer(peer); });
+        S.live.markers?.clear?.();
+        (peers || []).forEach(peer => {
+          if (peer.id !== S.live.clientId) this.addPeer(peer);
+        });
         this.render();
+        updateLivePeerMarkers();
       });
       socket.on('peer:joined', peer => {
         this.addPeer(peer);
         this.render();
+        updateLivePeerMarkers();
       });
       socket.on('peer:update', peer => {
-        if (peer && peer.id !== S.live.clientId) { S.live.peers.set(peer.id, peer); this.render(); }
+        if (peer && peer.id !== S.live.clientId) { S.live.peers.set(peer.id, peer); this.render(); updateLivePeerMarkers();}
       });
       socket.on('peer:left', ({ id }) => { this.removePeer(id); this.render(); });
       socket.on('webrtc:offer', ({ from, offer }) => { this.handleOffer(from, offer); });
