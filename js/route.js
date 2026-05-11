@@ -1,6 +1,7 @@
 // js/route.js — route parsing, GPX/FIT support, and map route navigation
 import { S, setState, status } from './state.js';
-import { clamp, setNum } from './physics.js';
+import { clamp } from './physics.js';
+import { setNum } from './state.js';
 import { setBusy } from './utils.js';
 
 function haversine(a, b) {
